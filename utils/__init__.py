@@ -32,19 +32,21 @@ def load_data(path="./data/cora/", dataset="cora"):
                         shape=(labels.shape[0], labels.shape[0]),
                         dtype=np.float32)
 
+    # adj_sparse = adj.copy()
+
     # build symmetric adjacency matrix
     adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)
 
     features = normalize(features)
     adj = normalize(adj + sp.eye(adj.shape[0]))
 
-    idx_train = range(140)
-    idx_val = range(200, 500)
-    idx_test = range(500, 1500)
+    idx_train = range(1000)
+    idx_val = range(1000, 1400)
+    idx_test = range(1405, 1406)
 
     features = torch.FloatTensor(np.array(features.todense()))
     labels = torch.LongTensor(np.where(labels)[1])
-    adj = sparse_mx_to_torch_sparse_tensor(adj)
+    adj = torch.FloatTensor(np.array(adj.todense()))
 
     idx_train = torch.LongTensor(idx_train)
     idx_val = torch.LongTensor(idx_val)

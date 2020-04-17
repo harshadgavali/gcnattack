@@ -12,31 +12,17 @@ import torch.optim as optim
 from utils import load_data, accuracy
 from gcn.models import GCN
 
-# Training settings
-parser = argparse.ArgumentParser()
-parser.add_argument('--no-cuda', action='store_true', default=False,
-                    help='Disables CUDA training.')
-parser.add_argument('--fastmode', action='store_true', default=False,
-                    help='Validate during training pass.')
-parser.add_argument('--seed', type=int, default=42, help='Random seed.')
-parser.add_argument('--epochs', type=int, default=200,
-                    help='Number of epochs to train.')
-parser.add_argument('--lr', type=float, default=0.01,
-                    help='Initial learning rate.')
-parser.add_argument('--weight_decay', type=float, default=5e-4,
-                    help='Weight decay (L2 loss on parameters).')
-parser.add_argument('--hidden', type=int, default=16,
-                    help='Number of hidden units.')
-parser.add_argument('--dropout', type=float, default=0.5,
-                    help='Dropout rate (1 - keep probability).')
+from attack import attack
 
-args = parser.parse_args()
-args.cuda = not args.no_cuda and torch.cuda.is_available()
+args = argparse.Namespace(dropout=0.5, epochs=100, 
+                fastmode=False, hidden=16, lr=0.01, 
+                seed=42, weight_decay=0.0005)
+# args.cuda = not args.no_cuda and torch.cuda.is_available()
+
+print(args)
 
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
-if args.cuda:
-    torch.cuda.manual_seed(args.seed)
 
 # Load data
 adj, features, labels, idx_train, idx_val, idx_test = load_data()
@@ -48,16 +34,6 @@ model = GCN(nfeat=features.shape[1],
             dropout=args.dropout)
 optimizer = optim.Adam(model.parameters(),
                        lr=args.lr, weight_decay=args.weight_decay)
-
-if args.cuda:
-    model.cuda()
-    features = features.cuda()
-    adj = adj.cuda()
-    labels = labels.cuda()
-    idx_train = idx_train.cuda()
-    idx_val = idx_val.cuda()
-    idx_test = idx_test.cuda()
-
 
 def train(epoch):
     t = time.time()
@@ -85,9 +61,17 @@ def train(epoch):
           'time: {:.4f}s'.format(time.time() - t))
 
 
-def test():
+def test(modify=False):
     model.eval()
-    output = model(features, adj)
+
+    features_mod = features.clone()
+    adj_mod = adj.clone()
+
+    if modify:
+        for node in np.array(idx_test):
+            features_mod, adj_mod = attack(node, model, features_mod, adj_mod, labels, 2, 0.01)
+    
+    output = model(features_mod, adj_mod)
     loss_test = F.nll_loss(output[idx_test], labels[idx_test])
     acc_test = accuracy(output[idx_test], labels[idx_test])
     print("Test set results:",
@@ -103,4 +87,8 @@ print("Optimization Finished!")
 print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
 
 # Testing
+t_total = time.time()
 test()
+test(modify=True)
+test()
+print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
