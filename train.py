@@ -26,7 +26,11 @@ np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 
 # Load data
-adj, features, labels, idx_train, idx_val, idx_test = load_data()
+adj, features, labels = load_data()
+
+idx_train = torch.LongTensor(range(0, 1000))
+idx_val = torch.LongTensor(range(1000, 1400))
+idx_test = torch.LongTensor(range(1400, 1500))
 
 def train(model, optimizer, adj, features, epoch):
     t = time.time()

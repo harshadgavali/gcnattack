@@ -40,20 +40,12 @@ def load_data(path="./data/cora/", dataset="cora"):
     features = normalize(features)
     adj = normalize(adj + sp.eye(adj.shape[0]))
 
-    idx_train = range(1000)
-    idx_val = range(1000, 1400)
-    idx_test = range(1405, 1406)
-
     features = torch.FloatTensor(np.array(features.todense()))
     labels = torch.LongTensor(np.where(labels)[1])
     adj = torch.FloatTensor(np.array(adj.todense()))
 
-    idx_train = torch.LongTensor(idx_train)
-    idx_val = torch.LongTensor(idx_val)
-    idx_test = torch.LongTensor(idx_test)
 
-    return adj, features, labels, idx_train, idx_val, idx_test
-
+    return adj, features, labels
 
 def normalize(mx):
     """Row-normalize sparse matrix"""
