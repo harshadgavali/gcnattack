@@ -1,112 +1,69 @@
-from __future__ import division
-from __future__ import print_function
-
 import time
 import argparse
-import numpy as np
 
 import torch
-import torch.nn.functional as F
-import torch.optim as optim
+import numpy as np
 
-from utils import load_data, accuracy
-from gcn.models import GCN
+from utils import load_data
 
-from attack import attack
+from gcn.train import normalize_params, get_model
+
 from defense import defense
+from attack import attack
 
 args = argparse.Namespace(dropout=0.5, epochs=100, 
                 fastmode=False, hidden=16, lr=0.01, 
-                seed=42, weight_decay=0.0005)
-# args.cuda = not args.no_cuda and torch.cuda.is_available()
-
+                seed=42, weight_decay=0.0005,
+                use_gpu=True, verbose=False,
+                defense_alpha=0.2, division_delta=1e-8,
+                m=2, attack_delta=0.01)
+args.use_gpu = args.use_gpu and torch.cuda.is_available()
 print(args)
 
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
+if args.use_gpu:
+    torch.cuda.manual_seed(args.seed)
+
+idxs = {
+    'train': torch.LongTensor(range(0, 140)), 
+    'val': torch.LongTensor(range(140, 500)), 
+    'test': torch.LongTensor(range(1400, 1401))
+}
 
 # Load data
 adj, features, labels = load_data()
+if args.use_gpu:
+    features = features.cuda()
+    adj = adj.cuda()
+    labels = labels.cuda()
+    for key in idxs:
+        idxs[key] = idxs[key].cuda()
 
-idx_train = torch.LongTensor(range(0, 1000))
-idx_val = torch.LongTensor(range(1000, 1400))
-idx_test = torch.LongTensor(range(1400, 1500))
-
-def train(model, optimizer, adj, features, epoch):
-    t = time.time()
-    model.train()
-    optimizer.zero_grad()
-    output = model(features, adj)
-    loss_train = F.nll_loss(output[idx_train], labels[idx_train])
-    acc_train = accuracy(output[idx_train], labels[idx_train])
-    loss_train.backward()
-    optimizer.step()
-
-    if not args.fastmode:
-        # Evaluate validation set performance separately,
-        # deactivates dropout during validation run.
-        model.eval()
-        output = model(features, adj)
-
-    loss_val = F.nll_loss(output[idx_val], labels[idx_val])
-    acc_val = accuracy(output[idx_val], labels[idx_val])
-    print('Epoch: {:04d}'.format(epoch+1),
-          'loss_train: {:.4f}'.format(loss_train.item()),
-          'acc_train: {:.4f}'.format(acc_train.item()),
-          'loss_val: {:.4f}'.format(loss_val.item()),
-          'acc_val: {:.4f}'.format(acc_val.item()),
-          'time: {:.4f}s'.format(time.time() - t))
-
-
-def test(model, optimizer, adj, features, modify=False):
-    model.eval()
-    
-    output = model(features, adj)
-    loss_test = F.nll_loss(output[idx_test], labels[idx_test])
-    acc_test = accuracy(output[idx_test], labels[idx_test])
-    print("Test set results:",
-          "loss= {:.4f}".format(loss_test.item()),
-          "accuracy= {:.4f}".format(acc_test.item()))
-
-
-def get_model_optim():
-    # Model and optimizer
-    model = GCN(nfeat=features.shape[1],
-                nhid=args.hidden,
-                nclass=labels.max().item() + 1,
-                dropout=args.dropout)
-    optimizer = optim.Adam(model.parameters(),
-                        lr=args.lr, weight_decay=args.weight_decay)
-    return model, optimizer
 
 def train_attack_defense(adj, features, use_defense=False, use_attack=False):
-    # Train model
-    model, optimizer = get_model_optim()
+    # load params
     if use_defense:
-        adj, features = defense(adj.clone(), features.clone())
-    else:
-        adj, features = adj.clone(), features.clone()
+        adj, features = defense(adj, features, args)
 
     t_total = time.time()
-    for epoch in range(args.epochs):
-        train(model, optimizer, adj, features, epoch)
+    model, _ = get_model(adj, features, labels, idxs, args)
     print("Optimization Finished!")
-    print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
+    print("Total time elapsed: {:.4f}s".format(time.time() - t_total), flush=True)
 
     # Testing
-    t_total = time.time()
-    
-    # attack and defense
     if use_attack:
-        for node in np.array(idx_test):
-            adj, features = attack(node, model, adj, features, labels, 2, 0.01)
-    if use_defense:
-        adj, features = defense(adj, features)
-    test(model, optimizer, adj, features)
-
-    print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
+        t_total = time.time()
+        for node in idxs['test'].cpu().numpy():
+            adj, features = attack(model, adj, features, labels, node, args)
+        if use_defense:
+            adj, features = defense(adj, features, args)
+        _, _ = get_model(adj, features, labels, idxs, args)
+        print("Total time elapsed: {:.4f}s".format(time.time() - t_total), flush=True)
 
 
 train_attack_defense(adj, features, use_defense=False, use_attack=False)
+print()
+# # # train_attack_defense(adj, features, use_defense=False, use_attack=True)
 train_attack_defense(adj, features, use_defense=False, use_attack=True)
-train_attack_defense(adj, features, use_defense=True, use_attack=True)
+print()

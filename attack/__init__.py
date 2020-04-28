@@ -1,28 +1,37 @@
 
-from utils.gradient import igradient_x, igradient_adj
-def attack(node, model, adj, x, labels, m, delta):
-    n = adj.shape[0]
-    features = dict()
 
-    # print(len(adj_sparse.row), x.shape)
-    # for id, (i, j, _) in enumerate(zip(adj_sparse.row, adj_sparse.col, adj_sparse.data)):
-    #     print(id, len(adj_sparse.row))
-    #     features[(i, j, 'a')] = igradient_adj(model, x, adj, labels, i, j, m)
+from gcn.train import igradient_adj, igradient_features
+
+def attack(model, adj, features, labels, node, args):
+    n = adj.shape[0]
+    importance = dict()
 
     for j in range(n):
-        features[(node, j, 'a')] = igradient_adj(model, x, adj, labels, node, j, m)
+        if j%100 == 0:
+            print("a", j, flush=True)
+        importance[(node, j, 'a')] = igradient_adj(model, adj, features, labels, node, j, args)
 
-    for j in range(x.shape[1]):
-        features[(node, j, 'x')] = igradient_x(model, x, adj, labels, node, j, m)
+    for j in range(features.shape[1]):
+        if j%100 == 0:
+            print("f", j, flush=True)
+        importance[(node, j, 'f')] = igradient_features(model, adj, features, labels, node, j, args)
 
-    sorted_features = list(sorted(features.keys(), key=lambda x: features[x], reverse=True))
+    sorted_importance = list(sorted(importance.keys(), key=lambda x: importance[x], reverse=True))
 
-    x_mod, adj_mod = x.clone().detach(), adj.clone().detach()
-    for i in range(int(n * delta)):
-        i, j, tp = sorted_features[i]
-        if tp == 'x':
-            x_mod[i, j] = x_mod[i, j] == 0
+    # modify
+    adj_mod, features_mod = adj.clone(), features.clone()
+    if args.use_gpu:
+        adj_mod, features_mod = adj.clone().cpu(), features.clone().cpu()
+
+    for i in range(int(n * args.attack_delta)):
+        i, j, tp = sorted_importance[i]
+        if tp == 'f':
+            features_mod[i, j] = not features_mod[i, j].bool()
+            features_mod[j, i] = features_mod[i, j]
         else:
-            adj_mod[i, j] = adj_mod[i, j] == 0
+            adj_mod[i, j] = not adj_mod[i, j].bool()
+            adj_mod[j, i] = adj_mod[i, j]
 
-    return adj_mod, x_mod
+    if args.use_gpu:
+        adj_mod, features_mod = adj_mod.cuda(), features_mod.cuda()
+    return adj_mod, features_mod

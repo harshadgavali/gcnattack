@@ -1,18 +1,14 @@
-import numpy as np
+import torch
+from gcn.train import normalize_params
 
+def defense(adj, features, args):
+    adj_f = adj.float()
 
-def get_simil(v1, v2, delta=1e-5):
-    M11 = (v1 * v2).sum()
-    M10 = (v1 * (1-v2)).sum()
-    M01 = ((1-v1) * v2).sum()
-    # print(v1.shape, v1.sum(), v2.sum())
-    # print(M11, M10, M01)
-    return M11 / (M10 + M01 + M11 + delta)
+    M11 = torch.matmul(adj_f, adj_f.T)
+    M01 = torch.matmul(adj_f, 1-adj_f.T)
+    M10 = torch.matmul(1-adj_f, adj_f.T)
+    simil = M11 / (M10 + M01 + M11 + args.division_delta)
 
-def defense(adj, features, alpha=0.5):
-    n = adj.shape[0]
-    for i in range(n):
-        for j in range(n):
-            if adj[i, j] and get_simil(features[i], features[j]) < alpha:
-                adj[i, j] = 0
+    adj = (adj.bool() & (simil >= args.defense_alpha)).int()
+
     return adj, features
