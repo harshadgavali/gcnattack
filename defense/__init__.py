@@ -1,5 +1,4 @@
 import torch
-from gcn.train import normalize_params
 
 def defense(adj, features, args):
     adj_f = adj.float()

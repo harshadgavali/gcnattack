@@ -6,7 +6,7 @@ import numpy as np
 
 from utils import load_data
 
-from gcn.train import normalize_params, get_model
+from gcn.train import get_model
 
 from defense import defense
 from attack import attack
@@ -28,7 +28,7 @@ if args.use_gpu:
 idxs = {
     'train': torch.LongTensor(range(0, 140)), 
     'val': torch.LongTensor(range(140, 500)), 
-    'test': torch.LongTensor(range(1400, 1401))
+    'test': torch.LongTensor(500+np.random.choice(1000, size=100, replace=False))
 }
 
 # Load data
@@ -49,7 +49,7 @@ def train_attack_defense(adj, features, use_defense=False, use_attack=False):
     t_total = time.time()
     model, _ = get_model(adj, features, labels, idxs, args)
     print("Optimization Finished!")
-    print("Total time elapsed: {:.4f}s".format(time.time() - t_total), flush=True)
+    # print("Total time elapsed: {:.4f}s".format(time.time() - t_total), flush=True)
 
     # Testing
     if use_attack:
@@ -59,11 +59,12 @@ def train_attack_defense(adj, features, use_defense=False, use_attack=False):
         if use_defense:
             adj, features = defense(adj, features, args)
         _, _ = get_model(adj, features, labels, idxs, args)
-        print("Total time elapsed: {:.4f}s".format(time.time() - t_total), flush=True)
+        # print("Total time elapsed: {:.4f}s".format(time.time() - t_total), flush=True)
 
 
 train_attack_defense(adj, features, use_defense=False, use_attack=False)
 print()
-# # # train_attack_defense(adj, features, use_defense=False, use_attack=True)
 train_attack_defense(adj, features, use_defense=False, use_attack=True)
 print()
+# train_attack_defense(adj, features, use_defense=True, use_attack=True)
+# print()

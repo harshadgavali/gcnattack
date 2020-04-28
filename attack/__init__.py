@@ -1,15 +1,18 @@
 
 
-from gcn.train import igradient_adj, igradient_features
+from gcn.train import igradient_adj, igradient_features, normalize_adj
 
 def attack(model, adj, features, labels, node, args):
     n = adj.shape[0]
     importance = dict()
 
+    adj_norm = normalize_adj(adj, args)
+
     for j in range(n):
-        if j%100 == 0:
-            print("a", j, flush=True)
-        importance[(node, j, 'a')] = igradient_adj(model, adj, features, labels, node, j, args)
+        if j != node:
+            if j%100 == 0:
+                print("a", j, flush=True)
+            importance[(node, j, 'a')] = igradient_adj(model, adj_norm, features, labels, node, j, adj, args)
 
     for j in range(features.shape[1]):
         if j%100 == 0:
