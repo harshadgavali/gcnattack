@@ -10,13 +10,9 @@ def attack(model, adj, features, labels, node, args):
 
     for j in range(n):
         if j != node:
-            if j%100 == 0:
-                print("a", j, flush=True)
             importance[(node, j, 'a')] = igradient_adj(model, adj_norm, features, labels, node, j, adj, args)
 
     for j in range(features.shape[1]):
-        if j%100 == 0:
-            print("f", j, flush=True)
         importance[(node, j, 'f')] = igradient_features(model, adj, features, labels, node, j, args)
 
     sorted_importance = list(sorted(importance.keys(), key=lambda x: importance[x], reverse=True))
