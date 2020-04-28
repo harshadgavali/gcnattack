@@ -14,7 +14,7 @@ from attack import attack
 args = argparse.Namespace(dropout=0.5, epochs=100, 
                 fastmode=False, hidden=16, lr=0.01, 
                 seed=42, weight_decay=0.0005,
-                use_gpu=False, verbose=False,
+                use_gpu=True, verbose=False,
                 defense_alpha=0.2, division_delta=1e-8,
                 m=2, attack_delta=0.01)
 args.use_gpu = args.use_gpu and torch.cuda.is_available()
@@ -28,7 +28,7 @@ if args.use_gpu:
 idxs = {
     'train': torch.LongTensor(range(0, 140)), 
     'val': torch.LongTensor(range(140, 500)), 
-    'test': torch.LongTensor(500+np.random.choice(1000, size=100, replace=False))
+    'test': torch.LongTensor(500+np.random.choice(1000, size=1, replace=False))
 }
 
 # Load data
