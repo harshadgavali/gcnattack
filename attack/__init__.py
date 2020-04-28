@@ -1,6 +1,6 @@
 
 from utils.gradient import igradient_x, igradient_adj
-def attack(node, model, x, adj, labels, m, delta):
+def attack(node, model, adj, x, labels, m, delta):
     n = adj.shape[0]
     features = dict()
 
@@ -10,13 +10,9 @@ def attack(node, model, x, adj, labels, m, delta):
     #     features[(i, j, 'a')] = igradient_adj(model, x, adj, labels, i, j, m)
 
     for j in range(n):
-        if j % 10 == 0:
-            print(node, j, 'a')
         features[(node, j, 'a')] = igradient_adj(model, x, adj, labels, node, j, m)
 
     for j in range(x.shape[1]):
-        if j % 10 == 0:
-            print(node, j, 'x')
         features[(node, j, 'x')] = igradient_x(model, x, adj, labels, node, j, m)
 
     sorted_features = list(sorted(features.keys(), key=lambda x: features[x], reverse=True))
@@ -29,4 +25,4 @@ def attack(node, model, x, adj, labels, m, delta):
         else:
             adj_mod[i, j] = adj_mod[i, j] == 0
 
-    return x_mod, adj_mod
+    return adj_mod, x_mod

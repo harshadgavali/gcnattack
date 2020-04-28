@@ -13,6 +13,7 @@ from utils import load_data, accuracy
 from gcn.models import GCN
 
 from attack import attack
+from defense import defense
 
 args = argparse.Namespace(dropout=0.5, epochs=100, 
                 fastmode=False, hidden=16, lr=0.01, 
@@ -27,15 +28,7 @@ torch.manual_seed(args.seed)
 # Load data
 adj, features, labels, idx_train, idx_val, idx_test = load_data()
 
-# Model and optimizer
-model = GCN(nfeat=features.shape[1],
-            nhid=args.hidden,
-            nclass=labels.max().item() + 1,
-            dropout=args.dropout)
-optimizer = optim.Adam(model.parameters(),
-                       lr=args.lr, weight_decay=args.weight_decay)
-
-def train(epoch):
+def train(model, optimizer, adj, features, epoch):
     t = time.time()
     model.train()
     optimizer.zero_grad()
@@ -61,17 +54,10 @@ def train(epoch):
           'time: {:.4f}s'.format(time.time() - t))
 
 
-def test(modify=False):
+def test(model, optimizer, adj, features, modify=False):
     model.eval()
-
-    features_mod = features.clone()
-    adj_mod = adj.clone()
-
-    if modify:
-        for node in np.array(idx_test):
-            features_mod, adj_mod = attack(node, model, features_mod, adj_mod, labels, 2, 0.01)
     
-    output = model(features_mod, adj_mod)
+    output = model(features, adj)
     loss_test = F.nll_loss(output[idx_test], labels[idx_test])
     acc_test = accuracy(output[idx_test], labels[idx_test])
     print("Test set results:",
@@ -79,16 +65,44 @@ def test(modify=False):
           "accuracy= {:.4f}".format(acc_test.item()))
 
 
-# Train model
-t_total = time.time()
-for epoch in range(args.epochs):
-    train(epoch)
-print("Optimization Finished!")
-print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
+def get_model_optim():
+    # Model and optimizer
+    model = GCN(nfeat=features.shape[1],
+                nhid=args.hidden,
+                nclass=labels.max().item() + 1,
+                dropout=args.dropout)
+    optimizer = optim.Adam(model.parameters(),
+                        lr=args.lr, weight_decay=args.weight_decay)
+    return model, optimizer
 
-# Testing
-t_total = time.time()
-test()
-test(modify=True)
-test()
-print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
+def train_attack_defense(adj, features, use_defense=False, use_attack=False):
+    # Train model
+    model, optimizer = get_model_optim()
+    if use_defense:
+        adj, features = defense(adj.clone(), features.clone())
+    else:
+        adj, features = adj.clone(), features.clone()
+
+    t_total = time.time()
+    for epoch in range(args.epochs):
+        train(model, optimizer, adj, features, epoch)
+    print("Optimization Finished!")
+    print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
+
+    # Testing
+    t_total = time.time()
+    
+    # attack and defense
+    if use_attack:
+        for node in np.array(idx_test):
+            adj, features = attack(node, model, adj, features, labels, 2, 0.01)
+    if use_defense:
+        adj, features = defense(adj, features)
+    test(model, optimizer, adj, features)
+
+    print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
+
+
+train_attack_defense(adj, features, use_defense=False, use_attack=False)
+train_attack_defense(adj, features, use_defense=False, use_attack=True)
+train_attack_defense(adj, features, use_defense=True, use_attack=True)
