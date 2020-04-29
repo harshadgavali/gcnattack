@@ -15,8 +15,8 @@ args = argparse.Namespace(dropout=0.5, epochs=100,
                 fastmode=False, hidden=16, lr=0.01, 
                 seed=42, weight_decay=0.0005,
                 use_gpu=True, verbose=False,
-                defense_alpha=0.2, division_delta=1e-8,
-                m=2, attack_delta=0.01)
+                defense_alpha=0.5, division_delta=1e-8,
+                m=2, attack_delta=27)
 args.use_gpu = args.use_gpu and torch.cuda.is_available()
 print(args)
 
@@ -26,9 +26,9 @@ if args.use_gpu:
     torch.cuda.manual_seed(args.seed)
 
 idxs = {
-    'train': torch.LongTensor(range(0, 140)), 
-    'val': torch.LongTensor(range(140, 500)), 
-    'test': torch.LongTensor(500+np.random.choice(1000, size=1, replace=False))
+    'train': torch.LongTensor(range(0, 270)), 
+    'val': torch.LongTensor(range(270, 550)), 
+    'test': torch.LongTensor(550+np.random.choice(1000, size=10, replace=False))
 }
 
 # Load data
@@ -54,16 +54,20 @@ def train_attack_defense(adj, features, use_defense=False, use_attack=False):
     # Testing
     if use_attack:
         t_total = time.time()
-        for node in idxs['test'].cpu().numpy():
+        for i, node in enumerate(idxs['test'].cpu().numpy()):
+            t_total = time.time()
+            print(i, "of", list(idxs['test'].size()), end=" ")
+            args.attack_delta = adj[node].sum()
             adj, features = attack(model, adj, features, labels, node, args)
+            print("time =", time.time() - t_total)
         if use_defense:
             adj, features = defense(adj, features, args)
         _, _ = get_model(adj, features, labels, idxs, args)
         # print("Total time elapsed: {:.4f}s".format(time.time() - t_total), flush=True)
 
-
-train_attack_defense(adj, features, use_defense=False, use_attack=False)
 print()
+# train_attack_defense(adj, features, use_defense=False, use_attack=False)
+# print()
 train_attack_defense(adj, features, use_defense=False, use_attack=True)
 print()
 # train_attack_defense(adj, features, use_defense=True, use_attack=True)
