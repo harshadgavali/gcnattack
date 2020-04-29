@@ -16,7 +16,7 @@ args = argparse.Namespace(dropout=0.5, epochs=100,
                 seed=42, weight_decay=0.0005,
                 use_gpu=True, verbose=False,
                 defense_alpha=0.5, division_delta=1e-8,
-                m=2, attack_delta=27)
+                m=2, attack_delta=0.01, attack_delta_degree=False)
 args.use_gpu = args.use_gpu and torch.cuda.is_available()
 print(args)
 
@@ -40,6 +40,8 @@ if args.use_gpu:
     for key in idxs:
         idxs[key] = idxs[key].cuda()
 
+args.attack_delta = int(args.attack_delta * adj.shape[0])
+
 
 def train_attack_defense(adj, features, use_defense=False, use_attack=False):
     # load params
@@ -57,7 +59,8 @@ def train_attack_defense(adj, features, use_defense=False, use_attack=False):
         for i, node in enumerate(idxs['test'].cpu().numpy()):
             t_total = time.time()
             print(i, "of", list(idxs['test'].size()), end=" ")
-            args.attack_delta = adj[node].sum()
+            if args.attack_delta_degree:
+                args.attack_delta = adj[node].sum()
             adj, features = attack(model, adj, features, labels, node, args)
             print("time =", time.time() - t_total)
         if use_defense:
