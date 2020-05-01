@@ -1,11 +1,13 @@
 
-
+from defense import defense
 from gcn.train import igradient_adj, igradient_features, normalize_adj
 
-def attack(model, adj, features, labels, node, args):
+def attack(model, adj, features, labels, node, use_defense, args):
     n = adj.shape[0]
     importance = dict()
 
+    if use_defense:
+      adj, features = defense(adj, features, args)
     adj_norm = normalize_adj(adj, args)
 
     for j in range(n):
@@ -14,7 +16,7 @@ def attack(model, adj, features, labels, node, args):
             importance[(node, j, 'a')] = grad * ( 1 - 2 * adj[node, j].bool().int())
 
     for j in range(features.shape[1]):
-        grad = igradient_features(model, adj, features, labels, node, j, args)
+        grad = igradient_features(model, adj_norm, features, labels, node, j, args)
         importance[(node, j, 'f')] = grad * ( 1 - 2 * features[node, j].bool().int())
 
     sorted_importance = list(sorted(importance.keys(), key=lambda x: importance[x], reverse=True))
@@ -28,7 +30,6 @@ def attack(model, adj, features, labels, node, args):
         i, j, tp = sorted_importance[i]
         if tp == 'f':
             features_mod[i, j] = not features_mod[i, j].bool()
-            features_mod[j, i] = features_mod[i, j]
         else:
             adj_mod[i, j] = not adj_mod[i, j].bool()
             adj_mod[j, i] = adj_mod[i, j]

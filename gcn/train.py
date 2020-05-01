@@ -48,7 +48,7 @@ def train(epoch, model, optimizer, adj_norm, features, labels, idxs, args):
             'time: {:.4f}s'.format(time.time() - t))
 
 
-def test(model, optimizer, adj_norm, features, labels, idxs, args):
+def test(model, adj_norm, features, labels, idxs, args):
     model.eval()
     output = model(adj_norm, features)
     loss_test = F.nll_loss(output[idxs['test']], labels[idxs['test']])
@@ -79,7 +79,7 @@ def get_model(adj, features, labels, idxs, args):
         train(epoch, model, optimizer, adj_norm, features, labels, idxs, args)
     
     # test
-    acc_test = test(model, optimizer, adj_norm, features, labels, idxs, args)
+    acc_test = test(model, adj_norm, features, labels, idxs, args)
     return model, acc_test
     
 
@@ -103,6 +103,7 @@ def igradient_features(model, adj_norm, features, labels, i, j, args):
 
 def igradient_adj(model, adj_norm, features, labels, i, j, adj, args):
     adj = adj.clone()
+    adj[i, i] = adj[j, j] = 1
     adj[i, j], adj[j, i] = 0, 0
     adj_igrad = 0
     for k in range(0, args.m+1):
