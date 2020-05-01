@@ -61,18 +61,20 @@ def train_attack_defense(adj, features, use_defense=False, use_attack=False):
                 args.attack_delta = adj[node].sum()
             adj, features = attack(model, adj, features, labels, node, args)
             print("time =", time.time() - t_total)
-        if use_defense:
-            adj, features = defense(adj, features, args)
         
+        print("Before defense")
         adj_norm = normalize_adj(adj, args)
         _ = test(model, adj_norm, features, labels, idxs, args)
+        
+        if use_defense:
+            print("After defense")
+            adj, features = defense(adj, features, args)
+            adj_norm = normalize_adj(adj, args)
+            _ = test(model, adj_norm, features, labels, idxs, args)
         # print("Total time elapsed: {:.4f}s".format(time.time() - t_total), flush=True)
 
-print()
-train_attack_defense(adj, features, use_defense=False, use_attack=True)
 print()
 train_attack_defense(adj, features, use_defense=True, use_attack=True)
 print()
 args.attack_delta_degree = True
 train_attack_defense(adj, features, use_defense=False, use_attack=True)
-# print()
