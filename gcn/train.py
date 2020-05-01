@@ -9,6 +9,7 @@ from utils import accuracy
 
 def normalize_adj(adj, args):
     """Row-normalize sparse matrix"""
+    adj = adj.clone()
     adj = adj + (adj.T - adj) * (adj.T > adj)
     I = torch.eye(adj.shape[0])
     if args.use_gpu:
