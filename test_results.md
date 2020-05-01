@@ -1,4 +1,10 @@
 |State|Accuracy|
 | --- |  ---   |
-|Before atatck|0.8|
-|After attack|0.1|
+||With m=2|
+|Before atatck|0.89|
+|After attack|0.14|
+|After attack with defense|0.60|
+|||
+||With m=20|
+|After attack|0.16|
+|After attack with defense|0.61|
