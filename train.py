@@ -45,8 +45,6 @@ args.attack_delta = int(args.attack_delta * adj.shape[0])
 
 def train_attack_defense(adj, features, use_defense=False, use_attack=False):
     # load params
-    if use_defense:
-        adj, features = defense(adj, features, args)
 
     t_total = time.time()
     model, _ = get_model(adj, features, labels, idxs, args)
@@ -61,7 +59,7 @@ def train_attack_defense(adj, features, use_defense=False, use_attack=False):
             print(i, "of", list(idxs['test'].size()), end=" ")
             if args.attack_delta_degree:
                 args.attack_delta = adj[node].sum()
-            adj, features = attack(model, adj, features, labels, node, use_defense, args)
+            adj, features = attack(model, adj, features, labels, node, args)
             print("time =", time.time() - t_total)
         if use_defense:
             adj, features = defense(adj, features, args)

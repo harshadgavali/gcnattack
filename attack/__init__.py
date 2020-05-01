@@ -2,12 +2,10 @@
 from defense import defense
 from gcn.train import igradient_adj, igradient_features, normalize_adj
 
-def attack(model, adj, features, labels, node, use_defense, args):
+def attack(model, adj, features, labels, node, args):
     n = adj.shape[0]
     importance = dict()
-
-    if use_defense:
-      adj, features = defense(adj, features, args)
+    
     adj_norm = normalize_adj(adj, args)
 
     for j in range(n):
