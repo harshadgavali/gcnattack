@@ -10,4 +10,4 @@ def defense(adj, features, args):
 
     adj = (adj.bool() & (simil >= args.defense_alpha)).int()
 
-    return adj, features
+    return adj, features.clone()
