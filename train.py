@@ -16,7 +16,7 @@ args = argparse.Namespace(dropout=0.5, epochs=100,
                 seed=42, weight_decay=0.0005,
                 use_gpu=True, verbose=False,
                 defense_alpha=0.2, division_delta=1e-8,
-                m=20, attack_delta=0.01, attack_delta_degree=False)
+                m=20, attack_delta=0.01, attack_delta_degree=False, attack_simil_alpha=False)
 args.use_gpu = args.use_gpu and torch.cuda.is_available()
 print(args)
 
